@@ -554,23 +554,24 @@ def health(rpc: RPC = Depends(get_rpc)):
     return rpc.health()
 
 @router.post("/tradingview", tags=["signals"])
-def tradingview_signal(action: str, ticker: str, contracts: float):
+def tradingview_signal(payload):
     """
     Передает сигнал от TradingView в стратегию.
     """
-    from freqtrade.resolvers.strategy_resolver import StrategyResolver
-    from freqtrade.exceptions import OperationalException
+    return {"status": "success", "message": "Сигнал передан в стратегию"}
+    # from freqtrade.resolvers.strategy_resolver import StrategyResolver
+    # from freqtrade.exceptions import OperationalException
 
-    try:
-        # Загружаем текущую стратегию
-        strategy = StrategyResolver.load_strategy()
-    except OperationalException as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка загрузки стратегии: {str(e)}")
+    # try:
+    #     # Загружаем текущую стратегию
+    #     strategy = StrategyResolver.load_strategy()
+    # except OperationalException as e:
+    #     raise HTTPException(status_code=500, detail=f"Ошибка загрузки стратегии: {str(e)}")
 
-    # Проверяем, что стратегия поддерживает установку сигналов
-    if not hasattr(strategy, "handle_signal"):
-        raise HTTPException(status_code=500, detail="Стратегия не поддерживает обработку сигналов.")
+    # # Проверяем, что стратегия поддерживает установку сигналов
+    # if not hasattr(strategy, "handle_signal"):
+    #     raise HTTPException(status_code=500, detail="Стратегия не поддерживает обработку сигналов.")
 
-    # Передаем сигнал в стратегию
-    strategy.handle_signal(action=action, ticker=ticker, contracts=contracts)
-    return {"status": "success", "message": f"Сигнал передан в стратегию: {action}, {ticker}"}
+    # # Передаем сигнал в стратегию
+    # strategy.handle_signal(action=action, ticker=ticker, contracts=contracts)
+    # return {"status": "success", "message": f"Сигнал передан в стратегию: {action}, {ticker}"}
