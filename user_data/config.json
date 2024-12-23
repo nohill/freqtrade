@@ -52,9 +52,6 @@
             ]
         }
     ],
-    "experimental": {
-        "plugins": ["custom_webhook"]
-    },
     "telegram": {
         "enabled": false,
         "token": "",

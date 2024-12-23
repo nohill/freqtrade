@@ -533,3 +533,25 @@ def sysinfo():
 @router.get("/health", response_model=Health, tags=["info"])
 def health(rpc: RPC = Depends(get_rpc)):
     return rpc.health()
+
+@router.post("/tradingview", tags=["signals"])
+def tradingview_signal(action: str, ticker: str, contracts: float):
+    """
+    Передает сигнал от TradingView в стратегию.
+    """
+    from freqtrade.resolvers.strategy_resolver import StrategyResolver
+    from freqtrade.exceptions import OperationalException
+
+    try:
+        # Загружаем текущую стратегию
+        strategy = StrategyResolver.load_strategy()
+    except OperationalException as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка загрузки стратегии: {str(e)}")
+
+    # Проверяем, что стратегия поддерживает установку сигналов
+    if not hasattr(strategy, "handle_signal"):
+        raise HTTPException(status_code=500, detail="Стратегия не поддерживает обработку сигналов.")
+
+    # Передаем сигнал в стратегию
+    strategy.handle_signal(action=action, ticker=ticker, contracts=contracts)
+    return {"status": "success", "message": f"Сигнал передан в стратегию: {action}, {ticker}"}
