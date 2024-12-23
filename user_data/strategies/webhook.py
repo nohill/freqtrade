@@ -28,7 +28,7 @@ class WebhookStrategy(IStrategy):
     last_signal_ticker: Optional[str] = None
     last_signal_contracts: Optional[float] = None
 
- def handle_signal(self, signal: dict):
+    def handle_signal(self, signal: dict):
         """
         Обрабатывает сигнал, переданный через API.
         """
