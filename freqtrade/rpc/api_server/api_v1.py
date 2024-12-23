@@ -1,8 +1,9 @@
 import logging
 from copy import deepcopy
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, FastAPI, Request, HTTPException
 from fastapi.exceptions import HTTPException
+from fastapi.responses import JSONResponse
 
 from freqtrade import __version__
 from freqtrade.data.history import get_datahandler
@@ -90,6 +91,24 @@ API_VERSION = 2.41
 router_public = APIRouter()
 # Private API, protected by authentication
 router = APIRouter()
+app = FastAPI()
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    # Разрешаем доступ без авторизации для /api/v1/tradingview
+    if request.url.path == "/api/v1/tradingview":
+        response = await call_next(request)
+        return response
+
+    # Для всех остальных маршрутов требуем авторизацию
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or auth_header != "Basic ZnJlcXRyYWRlcjozMTQzMTQ=":  # freqtrader:314314 в base64
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "Unauthorized"}
+        )
+
+    return await call_next(request)
 
 
 @router_public.get("/ping", response_model=Ping)
