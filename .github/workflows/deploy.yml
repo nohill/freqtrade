@@ -25,5 +25,5 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
           cd ${{ secrets.REPO_PATH }} &&
-          git pull --rebase origin develop
+          git pull origin develop
           "

@@ -2,7 +2,6 @@ from freqtrade.strategy.interface import IStrategy
 from pandas import DataFrame
 
 class WebhookStrategy(IStrategy):
-    # ROI (Return on Investment) настройка
     minimal_roi = {
         "0": 0.1  # Take profit через 10%
     }
