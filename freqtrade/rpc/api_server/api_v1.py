@@ -1,6 +1,5 @@
 import logging
 from copy import deepcopy
-
 from fastapi import APIRouter, Depends, Query, FastAPI, Request, HTTPException
 from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse
@@ -558,6 +557,8 @@ async def tradingview_signal(request: Request):
     """
     Принимает сигнал от TradingView в виде произвольного JSON и передает его в стратегию.
     """
+    import json
+
     try:
         body = await request.json()
 
