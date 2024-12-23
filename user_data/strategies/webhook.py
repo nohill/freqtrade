@@ -10,9 +10,9 @@ class WebhookStrategy(IStrategy):
     """
 
     stoploss = -0.99 # inactive
-    "timeframe": "5m",
+    timeframe = "5m"
     minimal_roi = {
-    "0": 100 # inactive
+        "0": 100 # inactive
     }
 
 
