@@ -2,6 +2,7 @@ from freqtrade.strategy.interface import IStrategy
 from pandas import DataFrame
 
 class WebhookStrategy(IStrategy):
+    # ROI (Return on Investment) настройка
     minimal_roi = {
         "0": 0.1  # Take profit через 10%
     }
@@ -44,3 +45,9 @@ class WebhookStrategy(IStrategy):
         if 'sell' in self.custom_info:
             dataframe.loc[dataframe.index[-1], 'sell'] = 1
         return dataframe
+
+    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        """
+        Прокси к populate_buy_trend для совместимости с Freqtrade.
+        """
+        return self.populate_buy_trend(dataframe, metadata)
