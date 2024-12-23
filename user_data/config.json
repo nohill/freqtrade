@@ -44,7 +44,6 @@
             "BNB/.*"
         ]
     },
-    "timeframe": "5m",
     "pairlists": [
         {
             "method": "StaticPairList",

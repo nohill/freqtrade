@@ -9,6 +9,13 @@ class WebhookStrategy(IStrategy):
     Стратегия, основанная на сигналах TradingView.
     """
 
+    stoploss = -0.99 # inactive
+    "timeframe": "5m",
+    minimal_roi = {
+    "0": 100 # inactive
+    }
+
+
     # Метод обязателен, даже если не используется
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
