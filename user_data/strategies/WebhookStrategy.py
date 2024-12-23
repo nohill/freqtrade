@@ -1,5 +1,5 @@
 from freqtrade.strategy import IStrategy
-from pandas import DataFrame
+from freqtrade.persistence import Trade
 from typing import Optional
 
 class WebhookStrategy(IStrategy):
@@ -13,58 +13,55 @@ class WebhookStrategy(IStrategy):
         "0": 100  # Неактивный ROI
     }
 
-    # Переменные для хранения последнего сигнала
-    last_signal_action: Optional[str] = None
-    last_signal_contracts: Optional[float] = None
-
     def handle_signal(self, signal: dict):
         """
         Обрабатывает сигнал, переданный через API.
+        Закрывает позиции и открывает новые на основе сигнала.
         """
-        self.last_signal_action = signal.get("action")
-        self.last_signal_contracts = float(signal.get("contracts", 0))
-        print(f"Получен сигнал: {signal}")
+        action = signal.get("action")
+        contracts = float(signal.get("contracts", 0)) / 100
 
-    def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        if not action or contracts <= 0:
+            print("Некорректный сигнал")
+            return
+
+        # Получение доступного баланса
+        available_balance = self.wallet.get_available_stake_amount()
+
+        # Вычисляем размер сделки
+        stake_amount = available_balance * contracts
+
+        if action == "buy":
+            print(f"Обработка сигнала BUY с размером позиции: {stake_amount}")
+            # Закрыть текущую шорт позицию
+            self.close_positions(side="short")
+            # Открыть новую лонг позицию
+            self.enter_position(stake_amount, side="long")
+
+        elif action == "sell":
+            print(f"Обработка сигнала SELL с размером позиции: {stake_amount}")
+            # Закрыть текущую лонг позицию
+            self.close_positions(side="long")
+            # Открыть новую шорт позицию
+            self.enter_position(stake_amount, side="short")
+
+    def close_positions(self, side: str):
         """
-        Добавляет индикаторы в DataFrame. В этой стратегии индикаторы не используются.
+        Закрывает все активные позиции указанного типа (long/short).
         """
-        return dataframe
+        trades = Trade.get_open_trades()
+        for trade in trades:
+            if trade.is_short == (side == "short"):
+                print(f"Закрытие позиции {side} для пары {trade.pair}")
+                self.close_trade(trade)
 
-    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+    def enter_position(self, stake_amount: float, side: str):
         """
-        Логика входа в сделку на основе сигнала.
+        Открывает новую позицию указанного типа (long/short).
         """
-        # Если сигнал на покупку (buy)
-        if self.last_signal_action == "buy":
-            # Закрыть шорт и открыть лонг на указанный процент
-            dataframe.loc[:, "exit_short"] = 1
-            dataframe.loc[:, "enter_long"] = 1
-            dataframe.loc[:, "stake_amount"] = (
-                self.last_signal_contracts / 100 * self.wallet.available_balance
-            )
-
-        # Если сигнал на продажу (sell)
-        if self.last_signal_action == "sell":
-            # Закрыть лонг и открыть шорт на указанный процент
-            dataframe.loc[:, "exit_long"] = 1
-            dataframe.loc[:, "enter_short"] = 1
-            dataframe.loc[:, "stake_amount"] = (
-                self.last_signal_contracts / 100 * self.wallet.available_balance
-            )
-
-        return dataframe
-
-    def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        """
-        Логика выхода из сделки на основе сигнала.
-        """
-        # Выход из шорта, если сигнал - "buy"
-        if self.last_signal_action == "buy":
-            dataframe.loc[:, "exit_short"] = 1
-
-        # Выход из лонга, если сигнал - "sell"
-        if self.last_signal_action == "sell":
-            dataframe.loc[:, "exit_long"] = 1
-
-        return dataframe
+        pair = self.dp.current_whitelist()[0]  # Берем первую доступную пару
+        print(f"Открытие новой позиции {side} для пары {pair} с размером {stake_amount}")
+        if side == "long":
+            self.buy(pair=pair, stake_amount=stake_amount)
+        elif side == "short":
+            self.sell(pair=pair, stake_amount=stake_amount)
