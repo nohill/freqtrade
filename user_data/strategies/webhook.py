@@ -1,3 +1,12 @@
+# --- Импорты ---
+from freqtrade.strategy import IStrategy  # Импорт интерфейса стратегии
+from fastapi import FastAPI, HTTPException  # Для вебхуков
+from pandas import DataFrame  # Для работы с данными
+from typing import Optional  # Для опциональных аннотаций
+
+# --- API для сигналов TradingView ---
+app = FastAPI()
+
 class WebhookStrategy(IStrategy):
     """
     Стратегия, полностью основанная на сигналах от TradingView через вебхук.
