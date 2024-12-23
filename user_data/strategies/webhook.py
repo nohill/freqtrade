@@ -1,16 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 from freqtrade.strategy import IStrategy
 from pandas import DataFrame
 from typing import Optional
 
-# Создаем роутеры
-router_public = APIRouter()
+# Создаем роутер
 router = APIRouter()
 
-# Стратегия
 class WebhookStrategy(IStrategy):
     """
-    Стратегия для обработки сигналов от TradingView через вебхук.
+    Стратегия, полностью основанная на сигналах от TradingView.
     """
 
     # Настройки стратегии
@@ -20,16 +18,20 @@ class WebhookStrategy(IStrategy):
     stoploss = -0.10
     startup_candle_count = 0
 
-    # Переменные для хранения последнего сигнала
+    # Переменные для хранения сигналов
     last_signal_action: Optional[str] = None
     last_signal_ticker: Optional[str] = None
 
     @staticmethod
-    @router.post("/api/v1/tradingview", tags=["signals"])
-    async def handle_signal(action: str = Query(...), ticker: str = Query(...), contracts: int = Query(...)):
+    @router.post("/tradingview")
+    async def handle_signal(signal: dict):
         """
-        Обрабатывает сигнал от TradingView через запрос.
+        Обработка сигналов от TradingView.
         """
+        action = signal.get("action")
+        ticker = signal.get("ticker")
+        contracts = signal.get("contracts")
+
         if action not in ["enter_long", "enter_short", "exit_long", "exit_short"]:
             raise HTTPException(status_code=400, detail="Недопустимое действие")
 
@@ -41,13 +43,13 @@ class WebhookStrategy(IStrategy):
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
-        Метод обязателен для реализации, но не используется в этой стратегии.
+        Метод обязателен для реализации, но не используется.
         """
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
-        Вход в позиции на основе сигнала.
+        Логика входа на основе сигналов.
         """
         if (
             self.last_signal_action == "enter_long"
@@ -65,7 +67,7 @@ class WebhookStrategy(IStrategy):
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
-        Выход из позиций на основе сигнала.
+        Логика выхода на основе сигналов.
         """
         if (
             self.last_signal_action == "exit_long"
@@ -80,3 +82,10 @@ class WebhookStrategy(IStrategy):
             dataframe["exit_short"] = 1
 
         return dataframe
+
+    @classmethod
+    def register_routes(cls, app):
+        """
+        Метод для регистрации маршрутов FastAPI.
+        """
+        app.include_router(router, prefix="/api/v1")
