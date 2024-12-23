@@ -1,12 +1,3 @@
-# --- Импорты ---
-from fastapi import FastAPI, HTTPException
-from freqtrade.strategy import IStrategy
-from pandas import DataFrame
-from typing import Optional
-
-# --- API для сигналов TradingView ---
-app = FastAPI()
-
 class WebhookStrategy(IStrategy):
     """
     Стратегия, полностью основанная на сигналах от TradingView через вебхук.
@@ -42,11 +33,16 @@ class WebhookStrategy(IStrategy):
 
         print(f"Получен сигнал: action={action}, ticker={ticker}, contracts={contracts}")
 
+    def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        """
+        Метод, обязателен для реализации, но в этой стратегии не используется.
+        """
+        return dataframe
+
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
         Логика входа на основе последних сигналов.
         """
-        # Проверяем, есть ли сигнал для текущей пары
         if (
             self.last_signal_action == "enter_long"
             and metadata["pair"] == self.last_signal_ticker
@@ -65,7 +61,6 @@ class WebhookStrategy(IStrategy):
         """
         Логика выхода на основе последних сигналов.
         """
-        # Проверяем, есть ли сигнал для текущей пары
         if (
             self.last_signal_action == "exit_long"
             and metadata["pair"] == self.last_signal_ticker
