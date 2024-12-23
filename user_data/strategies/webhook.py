@@ -1,8 +1,19 @@
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from freqtrade.strategy.interface import IStrategy
 from freqtrade.persistence import Trade
 from pandas import DataFrame
 from typing import Dict
 import json
+
+app = FastAPI()
+
+# Модель данных для вебхука
+class TradingViewSignal(BaseModel):
+    action: str
+    contracts: float
+    ticker: str
+    position_size: float
 
 class WebhookStrategy(IStrategy):
     """
@@ -47,16 +58,15 @@ class WebhookStrategy(IStrategy):
             dataframe.loc[dataframe.index[-1], 'sell'] = 1
         return dataframe
 
-    def process_webhook(self, payload: str):
+    def process_signal(self, signal: Dict):
         """
         Обработка вебхука для управления ботом.
-        :param payload: JSON-пакет, отправленный через вебхук.
+        :param signal: JSON-пакет, отправленный через вебхук.
         """
         try:
-            data = json.loads(payload)
-            action = data.get("action")
-            ticker = data.get("ticker")
-            contracts = float(data.get("contracts", 0))
+            action = signal.get("action")
+            ticker = signal.get("ticker")
+            contracts = float(signal.get("contracts", 0))
 
             if action not in ["buy", "sell"]:
                 self.logger.warning(f"Некорректное действие: {action}")
@@ -79,8 +89,6 @@ class WebhookStrategy(IStrategy):
                 # Открытие шорта
                 self.enter_trade(ticker, contracts, direction="short")
 
-        except json.JSONDecodeError:
-            self.logger.error("Некорректный формат JSON в вебхуке")
         except Exception as e:
             self.logger.error(f"Ошибка обработки вебхука: {str(e)}")
 
@@ -111,3 +119,12 @@ class WebhookStrategy(IStrategy):
             self.logger.info(f"Закрытие позиции для {trade.pair} по причине: {sell_reason}.")
         except Exception as e:
             self.logger.error(f"Ошибка при закрытии позиции: {str(e)}")
+
+@app.post("/api/v1/tradingview")
+async def tradingview_signal(signal: TradingViewSignal):
+    try:
+        strategy = WebhookStrategy()
+        strategy.process_signal(signal.dict())
+        return {"status": "success", "data": signal.dict()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка обработки сигнала: {str(e)}")
