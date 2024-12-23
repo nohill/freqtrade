@@ -28,7 +28,7 @@ class WebhookStrategy(IStrategy):
             return
 
         # Получение доступного баланса
-        available_balance = self.wallet.get_available_stake_amount()
+        available_balance = self.wallets.get_available_stake_amount()
 
         # Вычисляем размер сделки
         stake_amount = available_balance * contracts
