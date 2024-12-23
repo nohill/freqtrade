@@ -51,3 +51,9 @@ class WebhookStrategy(IStrategy):
         Прокси к populate_buy_trend для совместимости с Freqtrade.
         """
         return self.populate_buy_trend(dataframe, metadata)
+
+    def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        """
+        Прокси к populate_sell_trend для совместимости с Freqtrade.
+        """
+        return self.populate_sell_trend(dataframe, metadata)
