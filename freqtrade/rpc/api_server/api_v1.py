@@ -566,8 +566,8 @@ async def tradingview_signal(request: Request, config=Depends(get_config)):
 
         strategy = StrategyResolver.load_strategy(config)
         if hasattr(strategy, "handle_signal") and callable(strategy.handle_signal):
-            return {"status": "success", "message": "Сигнал передан в стратегию", "body": body}
             strategy.handle_signal(body)  # Передаем сигнал в стратегию
+            return {"status": "success", "message": "Сигнал передан в стратегию", "body": body}
         else:
             raise HTTPException(
                 status_code=500,
