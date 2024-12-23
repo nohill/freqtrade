@@ -563,7 +563,7 @@ async def tradingview_signal(request: Request):
         body = await request.json()
 
         from freqtrade.resolvers.strategy_resolver import StrategyResolver
-        config["strategy"] = "WebhookStrategy"
+        config = Depends(get_config)
 
         strategy = StrategyResolver.load_strategy(config)
         if hasattr(strategy, "handle_signal") and callable(strategy.handle_signal):
