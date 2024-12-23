@@ -76,3 +76,12 @@ class WebhookStrategy(IStrategy):
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
+        Добавляет условия для входа в сделку. Эта стратегия полагается на сигналы и не использует логику входа.
+        """
+        return dataframe
+
+    def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        """
+        Добавляет условия для выхода из сделки. Эта стратегия полагается на сигналы и не использует логику выхода.
+        """
+        return dataframe
