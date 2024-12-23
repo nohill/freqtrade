@@ -120,7 +120,7 @@ class WebhookStrategy(IStrategy):
         except Exception as e:
             self.logger.error(f"Ошибка при закрытии позиции: {str(e)}")
 
-@app.post("/api/v1/tradingview")
+@app.post("/api/v1/webhook")
 async def tradingview_signal(signal: TradingViewSignal):
     try:
         strategy = WebhookStrategy()
