@@ -1,3 +1,9 @@
+from freqtrade.strategy import IStrategy
+from pandas import DataFrame
+from typing import Optional
+
+# Создаем роутер
+
 class WebhookStrategy(IStrategy):
     """
     Стратегия, основанная на сигналах TradingView.
