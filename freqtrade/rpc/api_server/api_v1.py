@@ -554,7 +554,7 @@ def health(rpc: RPC = Depends(get_rpc)):
     return rpc.health()
 
 @router.post("/tradingview", tags=["signals"])
-def tradingview_signal(payload):
+def tradingview_signal():
     """
     Передает сигнал от TradingView в стратегию.
     """
