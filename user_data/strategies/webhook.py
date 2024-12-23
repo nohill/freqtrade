@@ -1,7 +1,14 @@
 from freqtrade.strategy.interface import IStrategy
+from freqtrade.persistence import Trade
 from pandas import DataFrame
+from typing import Dict
+import json
 
 class WebhookStrategy(IStrategy):
+    """
+    Webhook-based strategy for Freqtrade.
+    """
+
     # ROI (Return on Investment) настройка
     minimal_roi = {
         "0": 0.1  # Take profit через 10%
@@ -13,10 +20,6 @@ class WebhookStrategy(IStrategy):
     # Таймфрейм
     timeframe = '5m'
 
-    # Указываем, что стратегия будет работать только с вебхуками
-    use_custom_stoploss = False
-    process_only_new_candles = True
-
     # Пользовательские данные для сигналов
     custom_info = {}
 
@@ -26,34 +29,85 @@ class WebhookStrategy(IStrategy):
         """
         return dataframe
 
-    def populate_buy_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
-        Логика покупки на основе сигналов.
+        Логика покупки на основе сигналов (прокси для совместимости).
         """
         dataframe['buy'] = 0
-        # Устанавливаем сигнал на покупку, если 'buy' передан через webhook
-        if 'buy' in self.custom_info:
+        if 'action' in self.custom_info and self.custom_info['action'] == 'buy':
             dataframe.loc[dataframe.index[-1], 'buy'] = 1
         return dataframe
 
-    def populate_sell_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+    def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
-        Логика продажи на основе сигналов.
+        Логика продажи на основе сигналов (прокси для совместимости).
         """
         dataframe['sell'] = 0
-        # Устанавливаем сигнал на продажу, если 'sell' передан через webhook
-        if 'sell' in self.custom_info:
+        if 'action' in self.custom_info and self.custom_info['action'] == 'sell':
             dataframe.loc[dataframe.index[-1], 'sell'] = 1
         return dataframe
 
-    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+    def process_webhook(self, payload: str):
         """
-        Прокси к populate_buy_trend для совместимости с Freqtrade.
+        Обработка вебхука для управления ботом.
+        :param payload: JSON-пакет, отправленный через вебхук.
         """
-        return self.populate_buy_trend(dataframe, metadata)
+        try:
+            data = json.loads(payload)
+            action = data.get("action")
+            ticker = data.get("ticker")
+            contracts = float(data.get("contracts", 0))
 
-    def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+            if action not in ["buy", "sell"]:
+                self.logger.warning(f"Некорректное действие: {action}")
+                return
+
+            # Получение текущей позиции для тикера
+            trade = Trade.get_open_trade_by_pair(ticker, self.dp.exchange.id)
+
+            if action == "buy":
+                if trade and trade.is_short:
+                    # Закрытие шорта
+                    self.close_trade(trade, sell_reason="webhook")
+                # Открытие лонга
+                self.enter_trade(ticker, contracts, direction="long")
+
+            elif action == "sell":
+                if trade and trade.is_long:
+                    # Закрытие лонга
+                    self.close_trade(trade, sell_reason="webhook")
+                # Открытие шорта
+                self.enter_trade(ticker, contracts, direction="short")
+
+        except json.JSONDecodeError:
+            self.logger.error("Некорректный формат JSON в вебхуке")
+        except Exception as e:
+            self.logger.error(f"Ошибка обработки вебхука: {str(e)}")
+
+    def enter_trade(self, ticker: str, contracts: float, direction: str):
         """
-        Прокси к populate_sell_trend для совместимости с Freqtrade.
+        Открытие новой позиции.
+        :param ticker: Пара для торговли.
+        :param contracts: Количество контрактов.
+        :param direction: Направление сделки ("long" или "short").
         """
-        return self.populate_sell_trend(dataframe, metadata)
+        try:
+            if direction == "long":
+                self.custom_info = {"action": "buy", "ticker": ticker, "contracts": contracts}
+            elif direction == "short":
+                self.custom_info = {"action": "sell", "ticker": ticker, "contracts": contracts}
+            self.logger.info(f"Открытие {direction} позиции на {ticker} с количеством {contracts}.")
+        except Exception as e:
+            self.logger.error(f"Ошибка при открытии позиции: {str(e)}")
+
+    def close_trade(self, trade: Trade, sell_reason: str):
+        """
+        Закрытие текущей позиции.
+        :param trade: Объект сделки для закрытия.
+        :param sell_reason: Причина закрытия сделки.
+        """
+        try:
+            self.dp.close_trade(trade)
+            self.logger.info(f"Закрытие позиции для {trade.pair} по причине: {sell_reason}.")
+        except Exception as e:
+            self.logger.error(f"Ошибка при закрытии позиции: {str(e)}")
