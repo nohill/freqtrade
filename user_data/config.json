@@ -69,9 +69,6 @@
         "username": "freqtrader",
         "password": "314314"
     },
-    "webhook": {
-        "enabled": true
-    },
     "bot_name": "freqtrade",
     "initial_state": "running",
     "force_entry_enable": false,
