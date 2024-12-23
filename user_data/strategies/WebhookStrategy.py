@@ -27,8 +27,11 @@ class WebhookStrategy(IStrategy):
             print("Некорректный сигнал")
             return
 
-        # Получение доступного баланса
-        available_balance = self.wallets.get_total_stake_amount()
+        # Проверяем, доступен ли объект self.wallets
+        if self.wallets is not None:
+            available_balance = self.wallets.get_total_stake_amount()
+        else:
+            available_balance = 500
 
         # Вычисляем размер сделки
         stake_amount = available_balance * contracts
