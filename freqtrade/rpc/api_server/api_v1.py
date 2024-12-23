@@ -492,6 +492,24 @@ def list_freqaimodels(config=Depends(get_config)):
     return {"freqaimodels": [x["name"] for x in models]}
 
 
+@router.post("/tradingview")
+async def handle_signal(signal: dict):
+    """
+    Обработка сигналов от TradingView.
+    """
+    action = signal.get("action")
+    ticker = signal.get("ticker")
+    contracts = signal.get("contracts")
+
+    if action not in ["enter_long", "enter_short", "exit_long", "exit_short"]:
+        raise HTTPException(status_code=400, detail="Недопустимое действие")
+
+    WebhookStrategy.last_signal_action = action
+    WebhookStrategy.last_signal_ticker = ticker
+
+    print(f"Получен сигнал: action={action}, ticker={ticker}, contracts={contracts}")
+    return {"status": "success", "action": action, "ticker": ticker, "contracts": contracts}
+
 @router.get("/available_pairs", response_model=AvailablePairs, tags=["candle data"])
 def list_available_pairs(
     timeframe: str | None = None,
