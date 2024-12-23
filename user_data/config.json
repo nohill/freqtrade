@@ -1,4 +1,3 @@
-
 {
     "$schema": "https://schema.freqtrade.io/schema.json",
     "max_open_trades": 3,
@@ -27,7 +26,7 @@
             "bids_to_ask_delta": 1
         }
     },
-    "exit_pricing":{
+    "exit_pricing": {
         "price_side": "same",
         "use_order_book": true,
         "order_book_top": 1
@@ -38,6 +37,9 @@
         "secret": "",
         "ccxt_config": {},
         "ccxt_async_config": {},
+        "pair_whitelist": [
+            "USUALUSDT"
+        ],
         "pair_blacklist": [
             "BNB/.*"
         ]
@@ -59,18 +61,4 @@
         "enabled": true,
         "listen_ip_address": "127.0.0.1",
         "listen_port": 8080,
-        "verbosity": "error",
-        "enable_openapi": false,
-        "jwt_secret_key": "db332eb30a53a7ae2ef20974d9988f3aadfcfaeefc16d7106f22b32dacf4222f",
-        "ws_token": "uA2RBQxObbvRa7UmgEqCBnKOZ01Y_B5fLg",
-        "CORS_origins": [],
-        "username": "freqtrader",
-        "password": "314314"
-    },
-    "bot_name": "freqtrade",
-    "initial_state": "running",
-    "force_entry_enable": false,
-    "internals": {
-        "process_throttle_secs": 5
-    }
-}
+        "verbosity": "error
