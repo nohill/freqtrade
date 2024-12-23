@@ -1,6 +1,8 @@
 from freqtrade.strategy import IStrategy
 from freqtrade.persistence import Trade
 from typing import Optional
+from pandas import DataFrame
+
 
 class WebhookStrategy(IStrategy):
     """
@@ -65,3 +67,12 @@ class WebhookStrategy(IStrategy):
             self.buy(pair=pair, stake_amount=stake_amount)
         elif side == "short":
             self.sell(pair=pair, stake_amount=stake_amount)
+
+    def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        """
+        Добавляет индикаторы в DataFrame. В этой стратегии индикаторы не используются.
+        """
+        return dataframe
+
+    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        """
