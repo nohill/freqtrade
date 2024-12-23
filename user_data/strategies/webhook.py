@@ -9,6 +9,13 @@ class WebhookStrategy(IStrategy):
     Стратегия, основанная на сигналах TradingView.
     """
 
+    # Метод обязателен, даже если не используется
+    def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        """
+        Добавляет индикаторы в DataFrame. В этой стратегии индикаторы не используются.
+        """
+        return dataframe
+
     # Переменные для хранения последнего сигнала
     last_signal_action: Optional[str] = None
     last_signal_ticker: Optional[str] = None
