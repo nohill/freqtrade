@@ -28,14 +28,11 @@ class WebhookStrategy(IStrategy):
     last_signal_ticker: Optional[str] = None
     last_signal_contracts: Optional[float] = None
 
-    def handle_signal(self, action: str, ticker: str, contracts: float):
+ def handle_signal(self, signal: dict):
         """
         Обрабатывает сигнал, переданный через API.
         """
-        self.last_signal_action = action
-        self.last_signal_ticker = ticker
-        self.last_signal_contracts = contracts
-        print(f"Получен сигнал: {action}, {ticker}, {contracts}")
+        print(f"Получен сигнал: {signal}")
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """

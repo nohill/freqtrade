@@ -554,24 +554,26 @@ def health(rpc: RPC = Depends(get_rpc)):
     return rpc.health()
 
 @router.post("/tradingview", tags=["signals"])
-def tradingview_signal():
+async def tradingview_signal(request: Request):
     """
-    Передает сигнал от TradingView в стратегию.
+    Принимает сигнал от TradingView в виде произвольного JSON и передает его в стратегию.
     """
-    return {"status": "success", "message": "Сигнал передан в стратегию"}
-    # from freqtrade.resolvers.strategy_resolver import StrategyResolver
-    # from freqtrade.exceptions import OperationalException
+    try:
+        body = await request.json()
 
-    # try:
-    #     # Загружаем текущую стратегию
-    #     strategy = StrategyResolver.load_strategy()
-    # except OperationalException as e:
-    #     raise HTTPException(status_code=500, detail=f"Ошибка загрузки стратегии: {str(e)}")
+        from freqtrade.resolvers.strategy_resolver import StrategyResolver
 
-    # # Проверяем, что стратегия поддерживает установку сигналов
-    # if not hasattr(strategy, "handle_signal"):
-    #     raise HTTPException(status_code=500, detail="Стратегия не поддерживает обработку сигналов.")
+        strategy = StrategyResolver.load_strategy()
+        if hasattr(strategy, "handle_signal") and callable(strategy.handle_signal):
+            strategy.handle_signal(body)  # Передаем сигнал в стратегию
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail="Стратегия не поддерживает обработку сигналов."
+            )
 
-    # # Передаем сигнал в стратегию
-    # strategy.handle_signal(action=action, ticker=ticker, contracts=contracts)
-    # return {"status": "success", "message": f"Сигнал передан в стратегию: {action}, {ticker}"}
+        return {"status": "success", "message": "Сигнал передан в стратегию"}
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Некорректный JSON в теле запроса")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при обработке сигнала: {str(e)}")
