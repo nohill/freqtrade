@@ -553,7 +553,7 @@ def health(rpc: RPC = Depends(get_rpc)):
     return rpc.health()
 
 @router.post("/tradingview", tags=["signals"])
-async def tradingview_signal(request: Request):
+async def tradingview_signal(request: Request, config=Depends(get_config)):
     """
     Принимает сигнал от TradingView в виде произвольного JSON и передает его в стратегию.
     """
@@ -563,7 +563,6 @@ async def tradingview_signal(request: Request):
         body = await request.json()
 
         from freqtrade.resolvers.strategy_resolver import StrategyResolver
-        config = Depends(get_config)
 
         strategy = StrategyResolver.load_strategy(config)
         if hasattr(strategy, "handle_signal") and callable(strategy.handle_signal):
