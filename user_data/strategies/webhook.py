@@ -1,56 +1,53 @@
-# --- Импорты ---
-from freqtrade.strategy import IStrategy  # Импорт интерфейса стратегии
-from fastapi import FastAPI, HTTPException  # Для вебхуков
-from pandas import DataFrame  # Для работы с данными
-from typing import Optional  # Для опциональных аннотаций
+from fastapi import APIRouter, Depends, HTTPException, Query
+from freqtrade.strategy import IStrategy
+from pandas import DataFrame
+from typing import Optional
 
-# --- API для сигналов TradingView ---
-app = FastAPI()
+# Создаем роутеры
+router_public = APIRouter()
+router = APIRouter()
 
+# Стратегия
 class WebhookStrategy(IStrategy):
     """
-    Стратегия, полностью основанная на сигналах от TradingView через вебхук.
+    Стратегия для обработки сигналов от TradingView через вебхук.
     """
 
     # Настройки стратегии
     timeframe = "5m"
     can_short = True
-    minimal_roi = {"0": 0.01}  # ROI можно оставить минимальным, так как сигналы внешние
+    minimal_roi = {"0": 0.01}
     stoploss = -0.10
-    startup_candle_count = 0  # Не требует исторических данных
+    startup_candle_count = 0
 
-    # Переменные для хранения сигналов
+    # Переменные для хранения последнего сигнала
     last_signal_action: Optional[str] = None
     last_signal_ticker: Optional[str] = None
 
     @staticmethod
-    @app.post("/api/v1/tradingview")
-    async def handle_signal(signal: dict):
+    @router.post("/api/v1/tradingview", tags=["signals"])
+    async def handle_signal(action: str = Query(...), ticker: str = Query(...), contracts: int = Query(...)):
         """
-        Обработка сигналов от TradingView.
+        Обрабатывает сигнал от TradingView через запрос.
         """
-        action = signal.get("action")
-        ticker = signal.get("ticker")
-        contracts = signal.get("contracts")
-
         if action not in ["enter_long", "enter_short", "exit_long", "exit_short"]:
             raise HTTPException(status_code=400, detail="Недопустимое действие")
 
-        # Сохранение последнего сигнала
         WebhookStrategy.last_signal_action = action
         WebhookStrategy.last_signal_ticker = ticker
 
         print(f"Получен сигнал: action={action}, ticker={ticker}, contracts={contracts}")
+        return {"status": "success", "action": action, "ticker": ticker, "contracts": contracts}
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
-        Метод, обязателен для реализации, но в этой стратегии не используется.
+        Метод обязателен для реализации, но не используется в этой стратегии.
         """
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
-        Логика входа на основе последних сигналов.
+        Вход в позиции на основе сигнала.
         """
         if (
             self.last_signal_action == "enter_long"
@@ -68,7 +65,7 @@ class WebhookStrategy(IStrategy):
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
-        Логика выхода на основе последних сигналов.
+        Выход из позиций на основе сигнала.
         """
         if (
             self.last_signal_action == "exit_long"
@@ -83,7 +80,3 @@ class WebhookStrategy(IStrategy):
             dataframe["exit_short"] = 1
 
         return dataframe
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080)
