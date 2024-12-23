@@ -3,7 +3,7 @@ name: Deploy to Server
 on:
   push:
     branches:
-      - develop # Укажите вашу основную ветку
+      - develop
 
 jobs:
   deploy:
@@ -21,10 +21,9 @@ jobs:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       # Deploy to server
-      - name: Deploy to server
+      - name: Deploy code with rebase
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
           cd ${{ secrets.REPO_PATH }} &&
-          git pull origin develop &&
-          echo 'Changes deployed successfully!'
+          git pull --rebase origin develop
           "
