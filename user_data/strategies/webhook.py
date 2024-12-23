@@ -1,130 +1,81 @@
+# --- Импорты ---
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from freqtrade.strategy.interface import IStrategy
-from freqtrade.persistence import Trade
+from freqtrade.strategy import IStrategy
 from pandas import DataFrame
-from typing import Dict
-import json
+from typing import Optional
 
+# --- API для сигналов TradingView ---
 app = FastAPI()
-
-# Модель данных для вебхука
-class TradingViewSignal(BaseModel):
-    action: str
-    contracts: float
-    ticker: str
-    position_size: float
 
 class WebhookStrategy(IStrategy):
     """
-    Webhook-based strategy for Freqtrade.
+    Стратегия, полностью основанная на сигналах от TradingView через вебхук.
     """
 
-    # ROI (Return on Investment) настройка
-    minimal_roi = {
-        "0": 0.1  # Take profit через 10%
-    }
+    # Настройки стратегии
+    timeframe = "5m"
+    can_short = True
+    minimal_roi = {"0": 0.01}  # ROI можно оставить минимальным, так как сигналы внешние
+    stoploss = -0.10
+    startup_candle_count = 0  # Не требует исторических данных
 
-    # Стоп-лосс
-    stoploss = -0.2  # Убыток максимум 20%
+    # Переменные для хранения сигналов
+    last_signal_action: Optional[str] = None
+    last_signal_ticker: Optional[str] = None
 
-    # Таймфрейм
-    timeframe = '5m'
-
-    # Пользовательские данные для сигналов
-    custom_info = {}
-
-    def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+    @staticmethod
+    @app.post("/api/v1/tradingview")
+    async def handle_signal(signal: dict):
         """
-        Добавление индикаторов. Пусто, так как мы полагаемся на вебхуки.
+        Обработка сигналов от TradingView.
         """
-        return dataframe
+        action = signal.get("action")
+        ticker = signal.get("ticker")
+        contracts = signal.get("contracts")
+
+        if action not in ["enter_long", "enter_short", "exit_long", "exit_short"]:
+            raise HTTPException(status_code=400, detail="Недопустимое действие")
+
+        # Сохранение последнего сигнала
+        WebhookStrategy.last_signal_action = action
+        WebhookStrategy.last_signal_ticker = ticker
+
+        print(f"Получен сигнал: action={action}, ticker={ticker}, contracts={contracts}")
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
-        Логика покупки на основе сигналов (прокси для совместимости).
+        Логика входа на основе последних сигналов.
         """
-        dataframe['buy'] = 0
-        if 'action' in self.custom_info and self.custom_info['action'] == 'buy':
-            dataframe.loc[dataframe.index[-1], 'buy'] = 1
+        # Проверяем, есть ли сигнал для текущей пары
+        if (
+            self.last_signal_action == "enter_long"
+            and metadata["pair"] == self.last_signal_ticker
+        ):
+            dataframe["enter_long"] = 1
+
+        if (
+            self.last_signal_action == "enter_short"
+            and metadata["pair"] == self.last_signal_ticker
+        ):
+            dataframe["enter_short"] = 1
+
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
-        Логика продажи на основе сигналов (прокси для совместимости).
+        Логика выхода на основе последних сигналов.
         """
-        dataframe['sell'] = 0
-        if 'action' in self.custom_info and self.custom_info['action'] == 'sell':
-            dataframe.loc[dataframe.index[-1], 'sell'] = 1
+        # Проверяем, есть ли сигнал для текущей пары
+        if (
+            self.last_signal_action == "exit_long"
+            and metadata["pair"] == self.last_signal_ticker
+        ):
+            dataframe["exit_long"] = 1
+
+        if (
+            self.last_signal_action == "exit_short"
+            and metadata["pair"] == self.last_signal_ticker
+        ):
+            dataframe["exit_short"] = 1
+
         return dataframe
-
-    def process_signal(self, signal: Dict):
-        """
-        Обработка вебхука для управления ботом.
-        :param signal: JSON-пакет, отправленный через вебхук.
-        """
-        try:
-            action = signal.get("action")
-            ticker = signal.get("ticker")
-            contracts = float(signal.get("contracts", 0))
-
-            if action not in ["buy", "sell"]:
-                self.logger.warning(f"Некорректное действие: {action}")
-                return
-
-            # Получение текущей позиции для тикера
-            trade = Trade.get_open_trade_by_pair(ticker, self.dp.exchange.id)
-
-            if action == "buy":
-                if trade and trade.is_short:
-                    # Закрытие шорта
-                    self.close_trade(trade, sell_reason="webhook")
-                # Открытие лонга
-                self.enter_trade(ticker, contracts, direction="long")
-
-            elif action == "sell":
-                if trade and trade.is_long:
-                    # Закрытие лонга
-                    self.close_trade(trade, sell_reason="webhook")
-                # Открытие шорта
-                self.enter_trade(ticker, contracts, direction="short")
-
-        except Exception as e:
-            self.logger.error(f"Ошибка обработки вебхука: {str(e)}")
-
-    def enter_trade(self, ticker: str, contracts: float, direction: str):
-        """
-        Открытие новой позиции.
-        :param ticker: Пара для торговли.
-        :param contracts: Количество контрактов.
-        :param direction: Направление сделки ("long" или "short").
-        """
-        try:
-            if direction == "long":
-                self.custom_info = {"action": "buy", "ticker": ticker, "contracts": contracts}
-            elif direction == "short":
-                self.custom_info = {"action": "sell", "ticker": ticker, "contracts": contracts}
-            self.logger.info(f"Открытие {direction} позиции на {ticker} с количеством {contracts}.")
-        except Exception as e:
-            self.logger.error(f"Ошибка при открытии позиции: {str(e)}")
-
-    def close_trade(self, trade: Trade, sell_reason: str):
-        """
-        Закрытие текущей позиции.
-        :param trade: Объект сделки для закрытия.
-        :param sell_reason: Причина закрытия сделки.
-        """
-        try:
-            self.dp.close_trade(trade)
-            self.logger.info(f"Закрытие позиции для {trade.pair} по причине: {sell_reason}.")
-        except Exception as e:
-            self.logger.error(f"Ошибка при закрытии позиции: {str(e)}")
-
-@app.post("/api/v1/webhook")
-async def tradingview_signal(signal: TradingViewSignal):
-    try:
-        strategy = WebhookStrategy()
-        strategy.process_signal(signal.dict())
-        return {"status": "success", "data": signal.dict()}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка обработки сигнала: {str(e)}")
