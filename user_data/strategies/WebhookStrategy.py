@@ -2,6 +2,7 @@ from freqtrade.strategy import IStrategy
 from freqtrade.persistence import Trade
 from typing import Optional
 from pandas import DataFrame
+from datetime import datetime, timezone
 
 
 class WebhookStrategy(IStrategy):
