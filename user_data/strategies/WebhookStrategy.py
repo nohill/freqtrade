@@ -51,9 +51,9 @@ from freqtrade.util import (
 
 
 class WebhookStrategy(IStrategy):
-    def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-    self._rpc = RPC()
+    def __init__(self, freqtrade) -> None:
+        self._rpc = RPC(freqtrade)
+
 
     stoploss = -0.99
     timeframe = "5m"
