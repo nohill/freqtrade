@@ -56,6 +56,7 @@ class WebhookStrategy(IStrategy):
         # Выполняем ордер через RPC
         try:
             trade = RPC._rpc_force_entry(
+                self,
                 pair=payload.pair,
                 price=payload.price,
                 order_side=payload.side,
