@@ -52,6 +52,9 @@ from freqtrade.rpc.api_server.api_schemas import (
 from freqtrade.rpc.api_server.deps import get_config, get_exchange, get_rpc, get_rpc_optional
 from freqtrade.rpc.rpc import RPCException
 
+from freqtrade.rpc.api_server.api_schemas import ForceEnterPayload
+from freqtrade.rpc.rpc_manager import RpcManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -555,26 +558,59 @@ def health(rpc: RPC = Depends(get_rpc)):
 @router.post("/tradingview", tags=["signals"])
 async def tradingview_signal(request: Request, config=Depends(get_config)):
     """
-    Принимает сигнал от TradingView в виде произвольного JSON и передает его в стратегию.
+    Принимает сигнал от TradingView и обрабатывает его.
     """
     import json
 
     try:
         body = await request.json()
 
-        from freqtrade.resolvers.strategy_resolver import StrategyResolver
+        action = body.get("action")
+        contracts = float(body.get("contracts", 0)) / 100
+        ticker = body.get("ticker")
 
-        strategy = StrategyResolver.load_strategy(config)
-        if hasattr(strategy, "handle_signal") and callable(strategy.handle_signal):
-            strategy.handle_signal(body)  # Передаем сигнал в стратегию
-            return {"status": "success", "message": "Сигнал передан в стратегию", "body": body}
-        else:
-            raise HTTPException(
-                status_code=500,
-                detail="Стратегия не поддерживает обработку сигналов."
-            )
+        if not action or contracts <= 0:
+            raise HTTPException(status_code=400, detail="Некорректный сигнал")
 
-        return {"status": "success", "message": "Сигнал передан в стратегию"}
+        # Преобразуем buy/sell в long/short
+        order_side = "long" if action == "buy" else "short"
+
+        # Проверяем доступность пары
+        if not ticker:
+            raise HTTPException(status_code=400, detail="Пара не указана в сигнале.")
+
+        # Получаем доступный баланс
+        from freqtrade.wallets import Wallets
+        wallets = Wallets(config)
+        available_balance = wallets.get_total_stake_amount()
+        stake_amount = available_balance * contracts
+
+        print(f"Обработка сигнала {action.upper()} для пары {ticker} с размером позиции: {stake_amount}")
+
+        # Выполняем ордер через RpcManager
+        rpc_manager = RpcManager(config)
+        payload = ForceEnterPayload(
+            pair=ticker,
+            price=None,  # Рыночный ордер
+            side=order_side,
+            ordertype="market",
+            stakeamount=stake_amount,
+            entry_tag="signal_entry",
+            leverage=1,
+        )
+
+        trade = rpc_manager._rpc_force_entry(
+            payload.pair,
+            payload.price,
+            order_side=payload.side,
+            order_type=payload.ordertype,
+            stake_amount=payload.stakeamount,
+            enter_tag=payload.entry_tag or "force_entry",
+            leverage=payload.leverage,
+        )
+
+        return {"status": "success", "message": "Сигнал обработан", "trade": trade}
+
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Некорректный JSON в теле запроса")
     except Exception as e:

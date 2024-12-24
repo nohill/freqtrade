@@ -65,7 +65,7 @@ class WebhookStrategy(IStrategy):
         """
         Закрывает все открытые позиции по указанной паре, создавая противоположные ордера.
         """
-        trades = Trade.get_open_trades(pair=ticker)
+        trades = Trade.get_open_trades()
         for trade in trades:
             side_to_close = "sell" if order_side == "buy" else "buy"
             print(f"Закрытие позиции для {ticker} с ордером {side_to_close}")
