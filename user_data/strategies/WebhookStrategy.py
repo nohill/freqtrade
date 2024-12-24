@@ -1,7 +1,5 @@
 from freqtrade.strategy import IStrategy
-from freqtrade.rpc.rpc_manager import RPC
 from freqtrade.rpc.api_server.api_schemas import ForceEnterPayload
-from freqtrade.persistence import Trade
 from typing import Optional
 from pandas import DataFrame
 
@@ -30,6 +28,9 @@ class WebhookStrategy(IStrategy):
             print("Некорректный сигнал")
             return
 
+        # Преобразуем buy/sell в long/short
+        order_side = "long" if action == "buy" else "short"
+
         # Проверяем доступность пары
         if not ticker:
             if hasattr(self, "dp") and self.dp:
@@ -42,8 +43,6 @@ class WebhookStrategy(IStrategy):
 
         # Вычисляем размер сделки
         stake_amount = available_balance * contracts
-
-        order_side = "long" if action == "buy" else "short"
 
         print(f"Обработка сигнала {action.upper()} для пары {ticker} с размером позиции: {stake_amount}")
 
@@ -58,17 +57,19 @@ class WebhookStrategy(IStrategy):
             leverage=1,  # Укажите нужное плечо, если используется фьючерсная торговля
         )
 
-        # Выполняем ордер через RPC
-        rpc = RPC()
-        trade = rpc._rpc_force_entry(
-            payload.pair,
-            payload.price,
-            order_side=payload.side,
-            order_type=payload.ordertype,
-            stake_amount=payload.stakeamount,
-            enter_tag=payload.entry_tag or "force_entry",
-            leverage=payload.leverage,
-        )
+        # Выполняем ордер через RPC, переданный в стратегию
+        if hasattr(self, "rpc"):
+            trade = self.rpc._rpc_force_entry(
+                payload.pair,
+                payload.price,
+                order_side=payload.side,
+                order_type=payload.ordertype,
+                stake_amount=payload.stakeamount,
+                enter_tag=payload.entry_tag or "force_entry",
+                leverage=payload.leverage,
+            )
+        else:
+            raise ValueError("Объект RPC недоступен в стратегии.")
 
         if trade:
             print(f"Сделка успешно создана: {trade}")
