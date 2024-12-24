@@ -43,7 +43,7 @@ class WebhookStrategy(IStrategy):
         # Вычисляем размер сделки
         stake_amount = available_balance * contracts
 
-        order_side = "buy" if action == "buy" else "sell"
+       order_side = "long" if action == "buy" else "short"
 
         print(f"Обработка сигнала {action.upper()} для пары {ticker} с размером позиции: {stake_amount}")
 
