@@ -71,7 +71,6 @@ class WebhookStrategy(IStrategy):
         Создает новую сделку (long/short) через биржу.
         """
         order_type = "market"  # or "limit"
-        price = self.exchange.get_rate(pair, side)  # Получение текущей цены
 
         print(f"Создание сделки {side} для пары {pair} с размером {stake_amount}")
 
