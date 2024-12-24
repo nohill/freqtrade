@@ -37,7 +37,7 @@ class WebhookStrategy(IStrategy):
                 raise ValueError("Пара не указана в сигнале, и объект 'dp' не доступен.")
 
         # Получаем баланс через объект exchange
-        available_balance = self.exchange.get_balance(self.config["stake_currency"])["free"]
+        available_balance = 100
 
         # Вычисляем размер сделки
         stake_amount = available_balance * contracts
