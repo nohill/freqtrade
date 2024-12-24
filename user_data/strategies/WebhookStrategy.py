@@ -6,6 +6,9 @@ from datetime import datetime, timezone
 
 
 class WebhookStrategy(IStrategy):
+    def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.exchange = self.exchange
     """
     Стратегия, основанная на сигналах TradingView.
     """
@@ -75,15 +78,13 @@ class WebhookStrategy(IStrategy):
 
         print(f"Создание сделки {side} для пары {pair} с размером {stake_amount}")
 
-        self.confirm_trade_entry(
+        self.exchange.create_order(
             pair=pair,
             order_type=order_type,
             side=side,
             amount=stake_amount,
             rate=100,
-            entry_tag=None,
-            time_in_force="gtc",
-            current_time=datetime.now(timezone.utc),
+            leverage=1.0,
         )
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
