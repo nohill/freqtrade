@@ -45,7 +45,7 @@ class WebhookStrategy(IStrategy):
         # Создаём payload для RPC
         payload = ForceEnterPayload(
             pair=ticker,
-            price=None,  # Рыночный ордер
+            price=0,  # Рыночный ордер
             side=order_side,
             ordertype="market",
             stakeamount=stake_amount,
