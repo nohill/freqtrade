@@ -36,8 +36,7 @@ class WebhookStrategy(IStrategy):
             else:
                 raise ValueError("Пара не указана в сигнале, и объект 'dp' не доступен.")
 
-        # Получаем баланс через self.wallets
-       # available_balance = self.wallets.get_total_stake_amount()
+        # Получаем баланс через объект exchange
         available_balance = 100
 
         # Вычисляем размер сделки
@@ -48,14 +47,14 @@ class WebhookStrategy(IStrategy):
             # Закрыть текущую шорт позицию
             self.close_positions(side="sell", pair=ticker)
             # Открыть новую лонг позицию
-            self.enter_position(pair=ticker, stake_amount=stake_amount, side="buy")
+            self.create_trade(pair=ticker, stake_amount=stake_amount, side="buy")
 
         elif action == "sell":
             print(f"Обработка сигнала SELL для пары {ticker} с размером позиции: {stake_amount}")
             # Закрыть текущую лонг позицию
             self.close_positions(side="buy", pair=ticker)
             # Открыть новую шорт позицию
-            self.enter_position(pair=ticker, stake_amount=stake_amount, side="sell")
+            self.create_trade(pair=ticker, stake_amount=stake_amount, side="sell")
 
     def close_positions(self, side: str, pair: str):
         """
@@ -67,15 +66,21 @@ class WebhookStrategy(IStrategy):
                 print(f"Закрытие позиции {side} для пары {trade.pair}")
                 self.close_trade(trade)
 
-    def enter_position(self, pair: str, stake_amount: float, side: str):
+    def create_trade(self, pair: str, stake_amount: float, side: str):
         """
-        Открывает новую позицию указанного типа (long/short).
+        Создает новую сделку (long/short) через биржу.
         """
-        order_type = "market"  # Используем рыночный ордер
+        order_type = "market"  # or "limit"
 
         print(f"Создание сделки {side} для пары {pair} с размером {stake_amount}")
 
-        self.buy(pair=pair, amount=stake_amount) if side == "buy" else self.sell(pair=pair, amount=stake_amount)
+        self.confirm_trade_entry(
+            pair=pair,
+            order_type=order_type,
+            side=side,
+            amount=stake_amount,
+            rate=100,
+        )
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
