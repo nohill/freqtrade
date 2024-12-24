@@ -51,8 +51,9 @@ from freqtrade.util import (
 
 
 class WebhookStrategy(IStrategy):
-    def __init__(self, freqtrade) -> None:
-        self._rpc = RPC(freqtrade)
+    def __init__(self, config: Config) -> None:
+        self._rpc = RPC(config)
+
 
 
     stoploss = -0.99
