@@ -76,7 +76,7 @@ class WebhookStrategy(IStrategy):
 
         print(f"Создание сделки {side} для пары {pair} с размером {stake_amount}")
 
-        self.freqtrade.exchange.create_order(
+        freqtrade.exchange.create_order(
             pair=pair,
             order_type=order_type,
             side=side,
