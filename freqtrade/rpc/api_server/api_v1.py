@@ -54,7 +54,6 @@ from freqtrade.rpc.rpc import RPCException
 
 
 logger = logging.getLogger(__name__)
-
 # API version
 # Pre-1.1, no version was provided
 # Version increments should happen in "small" steps (1.1, 1.12, ...) unless big changes happen.
