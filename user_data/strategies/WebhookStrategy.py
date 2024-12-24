@@ -37,7 +37,7 @@ class WebhookStrategy(IStrategy):
                 raise ValueError("Пара не указана в сигнале, и объект 'dp' не доступен.")
 
         # Получаем баланс через объект exchange
-        available_balance = 100
+        available_balance = self.exchange.get_balance(self.config["stake_currency"])["free"]
 
         # Вычисляем размер сделки
         stake_amount = available_balance * contracts
@@ -47,34 +47,41 @@ class WebhookStrategy(IStrategy):
             # Закрыть текущую шорт позицию
             self.close_positions(side="short", pair=ticker)
             # Открыть новую лонг позицию
-            self.enter_position(ticker, stake_amount, side="long")
+            self.create_trade(pair=ticker, stake_amount=stake_amount, side="buy")
 
         elif action == "sell":
             print(f"Обработка сигнала SELL для пары {ticker} с размером позиции: {stake_amount}")
             # Закрыть текущую лонг позицию
             self.close_positions(side="long", pair=ticker)
             # Открыть новую шорт позицию
-            self.enter_position(ticker, stake_amount, side="short")
+            self.create_trade(pair=ticker, stake_amount=stake_amount, side="sell")
 
     def close_positions(self, side: str, pair: str):
         """
         Закрывает все активные позиции указанного типа (long/short) для конкретной пары.
         """
-        trades = Trade.get_open_trades()
+        trades = Trade.get_open_trades(pair=pair)
         for trade in trades:
             if trade.is_short == (side == "short"):
                 print(f"Закрытие позиции {side} для пары {trade.pair}")
                 self.close_trade(trade)
 
-    def enter_position(self, pair: str, stake_amount: float, side: str):
+    def create_trade(self, pair: str, stake_amount: float, side: str):
         """
-        Открывает новую позицию указанного типа (long/short).
+        Создает новую сделку (long/short) через биржу.
         """
-        print(f"Открытие новой позиции {side} для пары {pair} с размером {stake_amount}")
-        if side == "long":
-            self.buy(pair=pair, stake_amount=stake_amount)
-        elif side == "short":
-            self.sell(pair=pair, stake_amount=stake_amount)
+        order_type = "limit"  # Используйте 'market', если нужен рыночный ордер
+        price = self.exchange.get_rate(pair, side)  # Получение текущей цены
+
+        print(f"Создание сделки {side} для пары {pair} с размером {stake_amount} и ценой {price}")
+
+        self.exchange.create_trade(
+            pair=pair,
+            order_type=order_type,
+            side=side,
+            amount=stake_amount,
+            rate=price,
+        )
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
