@@ -80,6 +80,9 @@ class WebhookStrategy(IStrategy):
             side=side,
             amount=stake_amount,
             rate=100,
+            entry_tag=None,
+            time_in_force="gtc",
+            current_time=datetime.now(timezone.utc),
         )
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
