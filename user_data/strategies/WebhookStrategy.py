@@ -1,6 +1,5 @@
 from freqtrade.strategy import IStrategy
-from freqtrade.rpc.api_server.api_schemas import ForceEnterPayload
-from freqtrade.rpc.rpc_manager import RpcManager
+from freqtrade.persistence import Trade
 from typing import Optional
 from pandas import DataFrame
 
@@ -29,8 +28,8 @@ class WebhookStrategy(IStrategy):
             print("Некорректный сигнал")
             return
 
-        # Преобразуем buy/sell в long/short
-        order_side = "long" if action == "buy" else "short"
+        # Преобразуем buy/sell в соответствующую сторону ордера
+        order_side = "buy" if action == "buy" else "sell"
 
         # Проверяем доступность пары
         if not ticker:
@@ -47,32 +46,39 @@ class WebhookStrategy(IStrategy):
 
         print(f"Обработка сигнала {action.upper()} для пары {ticker} с размером позиции: {stake_amount}")
 
-        # Создаём payload для RPC
-        payload = ForceEnterPayload(
-            pair=ticker,
-            price=None,  # Рыночный ордер
-            side=order_side,
-            ordertype="market",
-            stakeamount=stake_amount,
-            entry_tag="signal_entry",
-            leverage=1,  # Укажите нужное плечо, если используется фьючерсная торговля
-        )
+        # Закрытие открытых сделок
+        self.close_open_positions(ticker, order_side)
 
-        # Выполняем ордер через RpcManager
+        # Создание нового ордера
         try:
-            rpc_manager = RpcManager(self._freqtrade)
-            trade = rpc_manager._rpc_force_entry(
-                payload.pair,
-                payload.price,
-                order_side=payload.side,
-                order_type=payload.ordertype,
-                stake_amount=payload.stakeamount,
-                enter_tag=payload.entry_tag or "force_entry",
-                leverage=payload.leverage,
+            order = self.exchange.create_order(
+                pair=ticker,
+                order_type="market",
+                side=order_side,
+                amount=stake_amount,
             )
-            print(f"Сделка успешно создана: {trade}")
+            print(f"Ордер успешно создан: {order}")
         except Exception as e:
             print(f"Ошибка при создании ордера: {e}")
+
+    def close_open_positions(self, ticker: str, order_side: str):
+        """
+        Закрывает все открытые позиции по указанной паре, создавая противоположные ордера.
+        """
+        trades = Trade.get_open_trades(pair=ticker)
+        for trade in trades:
+            side_to_close = "sell" if order_side == "buy" else "buy"
+            print(f"Закрытие позиции для {ticker} с ордером {side_to_close}")
+            try:
+                self.exchange.create_order(
+                    pair=ticker,
+                    order_type="market",
+                    side=side_to_close,
+                    amount=trade.amount,
+                )
+                print(f"Позиция закрыта: {trade}")
+            except Exception as e:
+                print(f"Ошибка при закрытии позиции: {e}")
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
