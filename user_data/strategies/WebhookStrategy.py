@@ -27,28 +27,35 @@ class WebhookStrategy(IStrategy):
             print("Некорректный сигнал")
             return
 
-        # Проверяем, доступен ли объект self.wallets
+        # Проверяем доступность объекта dp
+        if not hasattr(self, "dp") or not self.dp:
+            raise ValueError("Объект 'dp' (DataProvider) не инициализирован. Проверьте конфигурацию Freqtrade.")
+
+        # Получаем первую доступную пару из whitelist
+        pair = self.dp.current_whitelist()[0]
+
+        # Проверяем доступность объекта wallets
         if self.wallets is not None:
             available_balance = self.wallets.get_total_stake_amount()
         else:
-            available_balance = 500
+            raise ValueError("Объект 'wallets' не инициализирован. Проверьте конфигурацию Freqtrade.")
 
         # Вычисляем размер сделки
         stake_amount = available_balance * contracts
 
         if action == "buy":
-            print(f"Обработка сигнала BUY с размером позиции: {stake_amount}")
+            print(f"Обработка сигнала BUY для пары {pair} с размером позиции: {stake_amount}")
             # Закрыть текущую шорт позицию
             self.close_positions(side="short")
             # Открыть новую лонг позицию
-            self.enter_position(stake_amount, side="long")
+            self.enter_position(pair, stake_amount, side="long")
 
         elif action == "sell":
-            print(f"Обработка сигнала SELL с размером позиции: {stake_amount}")
+            print(f"Обработка сигнала SELL для пары {pair} с размером позиции: {stake_amount}")
             # Закрыть текущую лонг позицию
             self.close_positions(side="long")
             # Открыть новую шорт позицию
-            self.enter_position(stake_amount, side="short")
+            self.enter_position(pair, stake_amount, side="short")
 
     def close_positions(self, side: str):
         """
@@ -60,11 +67,10 @@ class WebhookStrategy(IStrategy):
                 print(f"Закрытие позиции {side} для пары {trade.pair}")
                 self.close_trade(trade)
 
-    def enter_position(self, stake_amount: float, side: str):
+    def enter_position(self, pair: str, stake_amount: float, side: str):
         """
         Открывает новую позицию указанного типа (long/short).
         """
-        pair = self.dp.current_whitelist()[0]  # Берем первую доступную пару
         print(f"Открытие новой позиции {side} для пары {pair} с размером {stake_amount}")
         if side == "long":
             self.buy(pair=pair, stake_amount=stake_amount)
