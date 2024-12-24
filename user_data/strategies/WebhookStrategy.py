@@ -1,6 +1,6 @@
 from freqtrade.strategy import IStrategy
-from freqtrade.rpc.rpc_manager import RPC
 from freqtrade.rpc.api_server.api_schemas import ForceEnterPayload
+from freqtrade.rpc.rpc_manager import RpcManager
 from typing import Optional
 from pandas import DataFrame
 
@@ -58,9 +58,10 @@ class WebhookStrategy(IStrategy):
             leverage=1,  # Укажите нужное плечо, если используется фьючерсная торговля
         )
 
-        # Выполняем ордер через RPC
+        # Выполняем ордер через RpcManager
         try:
-            trade = RPC.rpc()._rpc_force_entry(
+            rpc_manager = RpcManager(self._freqtrade)
+            trade = rpc_manager._rpc_force_entry(
                 payload.pair,
                 payload.price,
                 order_side=payload.side,
@@ -71,7 +72,7 @@ class WebhookStrategy(IStrategy):
             )
             print(f"Сделка успешно создана: {trade}")
         except Exception as e:
-            print(f"Ошибка при создании сделки: {e}")
+            print(f"Ошибка при создании ордера: {e}")
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
