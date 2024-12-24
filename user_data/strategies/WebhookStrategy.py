@@ -22,17 +22,19 @@ class WebhookStrategy(IStrategy):
         """
         action = signal.get("action")
         contracts = float(signal.get("contracts", 0)) / 100
+        ticker = signal.get("ticker")
 
         if not action or contracts <= 0:
             print("Некорректный сигнал")
             return
 
-        # Проверяем доступность объекта dp
-        if not hasattr(self, "dp") or not self.dp:
-            raise ValueError("Объект 'dp' (DataProvider) не инициализирован. Проверьте конфигурацию Freqtrade.")
-
-        # Получаем первую доступную пару из whitelist
-        pair = self.dp.current_whitelist()[0]
+        # Проверяем доступность пары
+        if not ticker:
+            # Если пара не передана, используем первую пару из whitelist
+            if hasattr(self, "dp") and self.dp:
+                ticker = self.dp.current_whitelist()[0]
+            else:
+                raise ValueError("Пара не указана в сигнале, и объект 'dp' не доступен.")
 
         # Проверяем доступность объекта wallets
         if self.wallets is not None:
@@ -44,24 +46,24 @@ class WebhookStrategy(IStrategy):
         stake_amount = available_balance * contracts
 
         if action == "buy":
-            print(f"Обработка сигнала BUY для пары {pair} с размером позиции: {stake_amount}")
+            print(f"Обработка сигнала BUY для пары {ticker} с размером позиции: {stake_amount}")
             # Закрыть текущую шорт позицию
-            self.close_positions(side="short")
+            self.close_positions(side="short", pair=ticker)
             # Открыть новую лонг позицию
-            self.enter_position(pair, stake_amount, side="long")
+            self.enter_position(ticker, stake_amount, side="long")
 
         elif action == "sell":
-            print(f"Обработка сигнала SELL для пары {pair} с размером позиции: {stake_amount}")
+            print(f"Обработка сигнала SELL для пары {ticker} с размером позиции: {stake_amount}")
             # Закрыть текущую лонг позицию
-            self.close_positions(side="long")
+            self.close_positions(side="long", pair=ticker)
             # Открыть новую шорт позицию
-            self.enter_position(pair, stake_amount, side="short")
+            self.enter_position(ticker, stake_amount, side="short")
 
-    def close_positions(self, side: str):
+    def close_positions(self, side: str, pair: str):
         """
-        Закрывает все активные позиции указанного типа (long/short).
+        Закрывает все активные позиции указанного типа (long/short) для конкретной пары.
         """
-        trades = Trade.get_open_trades()
+        trades = Trade.get_open_trades(pair=pair)
         for trade in trades:
             if trade.is_short == (side == "short"):
                 print(f"Закрытие позиции {side} для пары {trade.pair}")
