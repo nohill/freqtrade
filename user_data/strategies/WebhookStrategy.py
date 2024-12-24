@@ -3,12 +3,10 @@ from freqtrade.persistence import Trade
 from typing import Optional
 from pandas import DataFrame
 from datetime import datetime, timezone
+from freqtrade.exchange import Exchange
 
 
 class WebhookStrategy(IStrategy):
-    def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-    self.exchange = self.exchange
     """
     Стратегия, основанная на сигналах TradingView.
     """
@@ -78,7 +76,7 @@ class WebhookStrategy(IStrategy):
 
         print(f"Создание сделки {side} для пары {pair} с размером {stake_amount}")
 
-        self.exchange.create_order(
+        self.freqtrade.exchange.create_order(
             pair=pair,
             order_type=order_type,
             side=side,
