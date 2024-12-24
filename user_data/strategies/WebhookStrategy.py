@@ -1,8 +1,53 @@
 from freqtrade.strategy import IStrategy
 from freqtrade.rpc.rpc_manager import RPC
 from freqtrade.rpc.api_server.api_schemas import ForceEnterPayload
-from typing import Optional
-from pandas import DataFrame
+
+import asyncio
+import json
+import logging
+import re
+from collections.abc import Callable, Coroutine
+from copy import deepcopy
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta
+from functools import partial, wraps
+from html import escape
+from itertools import chain
+from math import isnan
+from threading import Thread
+from typing import Any, Literal, Optional
+
+from tabulate import tabulate
+from telegram import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardMarkup,
+    Update,
+)
+from telegram.constants import MessageLimit, ParseMode
+from telegram.error import BadRequest, NetworkError, TelegramError
+from telegram.ext import Application, CallbackContext, CallbackQueryHandler, CommandHandler
+from telegram.helpers import escape_markdown
+
+from freqtrade.__init__ import __version__
+from freqtrade.constants import DUST_PER_COIN, Config
+from freqtrade.enums import MarketDirection, RPCMessageType, SignalDirection, TradingMode
+from freqtrade.exceptions import OperationalException
+from freqtrade.misc import chunks, plural
+from freqtrade.persistence import Trade
+from freqtrade.rpc import RPC, RPCException, RPCHandler
+from freqtrade.rpc.rpc_types import RPCEntryMsg, RPCExitMsg, RPCOrderMsg, RPCSendMsg
+from freqtrade.util import (
+    dt_from_ts,
+    dt_humanize_delta,
+    fmt_coin,
+    fmt_coin2,
+    format_date,
+    round_value,
+)
+
 
 class WebhookStrategy(IStrategy):
     stoploss = -0.99
