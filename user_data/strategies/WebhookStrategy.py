@@ -2,7 +2,7 @@ from freqtrade.strategy import IStrategy
 from freqtrade.rpc.rpc_manager import RPC
 from freqtrade.rpc.api_server.api_schemas import ForceEnterPayload
 from pandas import DataFrame
-from freqtrade import Freqtrade
+from freqtrade import freqtrade
 import asyncio
 import json
 import logging
@@ -52,7 +52,7 @@ from freqtrade.util import (
 
 class WebhookStrategy(IStrategy):
     def __init__(self, config: Config) -> None:
-        freqtrade = Freqtrade(config)
+        freqtrade = freqtrade.Freqtrade(config)
         self._rpc = RPC(freqtrade)
 
 
