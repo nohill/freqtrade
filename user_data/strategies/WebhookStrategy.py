@@ -1,6 +1,7 @@
 from freqtrade.strategy import IStrategy
 from freqtrade.rpc.rpc_manager import RPC
 from freqtrade.rpc.api_server.api_schemas import ForceEnterPayload
+from pandas import DataFrame
 
 import asyncio
 import json
