@@ -37,7 +37,7 @@ class WebhookStrategy(IStrategy):
                 raise ValueError("Пара не указана в сигнале, и объект 'dp' не доступен.")
 
         # Получаем баланс через объект exchange
-        available_balance = self.exchange.get_balance(self.config["stake_currency"])["free"]
+        available_balance = 100
 
         # Вычисляем размер сделки
         stake_amount = available_balance * contracts
@@ -45,14 +45,14 @@ class WebhookStrategy(IStrategy):
         if action == "buy":
             print(f"Обработка сигнала BUY для пары {ticker} с размером позиции: {stake_amount}")
             # Закрыть текущую шорт позицию
-            self.close_positions(side="short", pair=ticker)
+            self.close_positions(side="sell", pair=ticker)
             # Открыть новую лонг позицию
             self.create_trade(pair=ticker, stake_amount=stake_amount, side="buy")
 
         elif action == "sell":
             print(f"Обработка сигнала SELL для пары {ticker} с размером позиции: {stake_amount}")
             # Закрыть текущую лонг позицию
-            self.close_positions(side="long", pair=ticker)
+            self.close_positions(side="buy", pair=ticker)
             # Открыть новую шорт позицию
             self.create_trade(pair=ticker, stake_amount=stake_amount, side="sell")
 
@@ -62,7 +62,7 @@ class WebhookStrategy(IStrategy):
         """
         trades = Trade.get_open_trades(pair=pair)
         for trade in trades:
-            if trade.is_short == (side == "short"):
+            if trade.is_short == (side == "sell"):
                 print(f"Закрытие позиции {side} для пары {trade.pair}")
                 self.close_trade(trade)
 
@@ -70,17 +70,16 @@ class WebhookStrategy(IStrategy):
         """
         Создает новую сделку (long/short) через биржу.
         """
-        order_type = "limit"  # Используйте 'market', если нужен рыночный ордер
+        order_type = "market"  # or "limit"
         price = self.exchange.get_rate(pair, side)  # Получение текущей цены
 
-        print(f"Создание сделки {side} для пары {pair} с размером {stake_amount} и ценой {price}")
+        print(f"Создание сделки {side} для пары {pair} с размером {stake_amount}")
 
-        self.exchange.create_trade(
+        self.exchange.create_order(
             pair=pair,
             order_type=order_type,
             side=side,
             amount=stake_amount,
-            rate=price,
         )
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
