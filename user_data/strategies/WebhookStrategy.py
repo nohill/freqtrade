@@ -60,7 +60,7 @@ class WebhookStrategy(IStrategy):
         """
         Закрывает все активные позиции указанного типа (long/short) для конкретной пары.
         """
-        trades = Trade.get_open_trades(pair=pair)
+        trades = Trade.get_open_trades()
         for trade in trades:
             if trade.is_short == (side == "short"):
                 print(f"Закрытие позиции {side} для пары {trade.pair}")
