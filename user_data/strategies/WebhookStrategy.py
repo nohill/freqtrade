@@ -36,11 +36,8 @@ class WebhookStrategy(IStrategy):
             else:
                 raise ValueError("Пара не указана в сигнале, и объект 'dp' не доступен.")
 
-        # Проверяем доступность объекта wallets
-        if self.wallets is not None:
-            available_balance = self.wallets.get_total_stake_amount()
-        else:
-            raise ValueError("Объект 'wallets' не инициализирован. Проверьте конфигурацию Freqtrade.")
+        # Получаем баланс через объект exchange
+        available_balance = self.exchange.get_balance(self.config["stake_currency"])["free"]
 
         # Вычисляем размер сделки
         stake_amount = available_balance * contracts
@@ -93,6 +90,4 @@ class WebhookStrategy(IStrategy):
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
-        Добавляет условия для выхода из сделки. Эта стратегия полагается на сигналы и не использует логику выхода.
-        """
-        return dataframe
+        Добавляет условия для выхода из сделки. Эта стратегия полагается на сигналы и не ис
